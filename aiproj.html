@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Travel Safety Alert Bot - Stay Informed, Travel Safer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <style>
+    .hero-bg {
+       background-color: #f1f5f9; /* slate-100 */
+       background-image: linear-gradient(to bottom right, #f1f5f9, #e2e8f0); /* slate-100 to slate-200 */
+    }
+    .feature-icon {
+      width: 2rem; height: 2rem; margin-bottom: 0.5rem; color: #4f46e5; /* indigo-600 */
+    }
+    #page-content > section { display: none; }
+    #page-content > section.active { display: block; }
+    .loader {
+      border: 4px solid #f3f3f3; border-top: 4px solid #6366f1; /* indigo-500 */
+      border-radius: 50%; width: 40px; height: 40px;
+      animation: spin 1s linear infinite; margin: 20px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin-top: 1.5em; margin-bottom: 0.5em; }
+    .prose p { margin-bottom: 1em; line-height: 1.6; }
+    .prose ul { list-style-position: inside; list-style-type: disc; margin-left: 1em; margin-bottom: 1em; }
+    .prose a { color: #4f46e5; /* indigo-600 */ text-decoration: underline; }
+    .prose strong { font-weight: 600; }
+    header nav ul a.active-nav { font-weight: 600; color: #4f46e5; /* indigo-600 */ }
+    #map { height: 300px; margin-top: 1.5rem; border-radius: 0.5rem; border: 1px solid #e2e8f0; /* slate-200 */ }
+
+    /* Chatbot Styles */
+    #chatbot-output { height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; padding: 0.75rem; border-radius: 0.5rem; background-color: #f8fafc; /* slate-50 */ }
+    .chat-message { margin-bottom: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 0.5rem; max-width: 80%; }
+    .user-message { background-color: #e0e7ff; /* indigo-100 */ margin-left: auto; }
+    .bot-message { background-color: #f1f5f9; /* slate-100 */ }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-700 font-sans antialiased">
+
+  <header class="bg-white shadow-sm sticky top-0 z-50">
+    <nav class="container mx-auto px-6 py-4 flex flex-wrap justify-between items-center">
+      <a href="#home" class="nav-link text-2xl font-bold text-indigo-600 hover:text-indigo-700 transition duration-300">
+        Travel Safety Bot
+      </a>
+      <div class="flex items-center space-x-4 mt-4 md:mt-0">
+        <ul class="flex space-x-6 text-slate-600">
+          <li><a href="#features" class="nav-link hover:text-indigo-600 transition duration-300">Features</a></li>
+          <li><a href="#how-it-works" class="nav-link hover:text-indigo-600 transition duration-300">How It Works</a></li>
+          <li><a href="#testimonials" class="nav-link hover:text-indigo-600 transition duration-300">Testimonials</a></li>
+          <li><a href="#chatbot" class="nav-link hover:text-indigo-600 transition duration-300">Chatbot</a></li>
+        </ul>
+        <a href="#subscribe" class="nav-link px-5 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300">
+          Get Alerts
+        </a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="page-content">
+
+    <section id="home">
+      <section class="hero-bg text-center py-24 px-6">
+        <div class="container mx-auto">
+          <h2 class="text-4xl md:text-5xl font-bold text-slate-800 mb-4 leading-tight">Travel Confidently, Stay Informed</h2>
+          <p class="text-lg md:text-xl text-slate-600 mb-8 max-w-2xl mx-auto">
+            Receive real-time safety alerts, local advisories, and essential tips tailored to your destination or current location.
+          </p>
+          <form id="check-safety-form" class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-2">
+             <div class="relative flex-grow w-full sm:w-1/2 lg:w-1/3">
+                 <input
+                  type="text"
+                  name="destination"
+                  id="hero-destination-input"
+                  placeholder="Enter destination (e.g., Paris, France)"
+                  class="w-full px-4 py-3 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  aria-label="Destination Input"
+                  required
+                />
+                 <button type="button" id="current-location-btn" title="Use Current Location" class="absolute right-2 top-1/2 transform -translate-y-1/2 p-1.5 text-slate-500 hover:text-indigo-600 focus:outline-none">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-5 h-5">
+                      <path fill-rule="evenodd" d="M9.69 18.933l.003.001C9.89 19.02 10 19 10 19s.11.02.308-.066l.002-.001.006-.003.018-.008a5.741 5.741 0 0 0 .281-.14c.186-.096.446-.24.757-.433.62-.384 1.445-.966 2.274-1.765C15.302 14.988 17 12.493 17 9A7 7 0 1 0 3 9c0 3.492 1.698 5.988 3.355 7.584a13.731 13.731 0 0 0 2.273 1.765 11.842 11.842 0 0 0 1.038.573l.018.008.006.003ZM10 11.25a2.25 2.25 0 1 0 0-4.5 2.25 2.25 0 0 0 0 4.5Z" clip-rule="evenodd" />
+                    </svg>
+                 </button>
+             </div>
+            <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-indigo-600 text-white text-lg rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 flex-shrink-0">
+              Check Safety Now
+            </button>
+          </form>
+          <p id="location-error" class="text-sm text-red-600 mt-2 h-4"></p>
+           <p class="text-sm text-slate-500 mt-4">Or <a href="#subscribe" class="nav-link text-indigo-600 hover:underline">subscribe for continuous updates</a>.</p>
+        </div>
+      </section>
+
+      <section id="landing-features" class="py-20 bg-white px-6">
+        <div class="container mx-auto text-center">
+          <h3 class="text-3xl font-bold text-slate-800 mb-4">Why Choose Our Safety Bot?</h3>
+          <p class="text-lg text-slate-600 mb-12 max-w-xl mx-auto">Everything you need to travel smarter and safer, all in one place.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
+            <div class="bg-slate-50 p-8 rounded-lg shadow-sm hover:shadow-lg transition duration-300 ease-in-out">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">Real-Time Location Alerts</h4>
+              <p class="text-slate-600">Receive timely notifications about safety incidents, health advisories, or natural events happening near you or at your planned destination.</p>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-sm hover:shadow-lg transition duration-300 ease-in-out">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">AI Chatbot Assistant</h4>
+              <p class="text-slate-600">Ask our intelligent chatbot specific questions about local customs, safety tips, emergency numbers, or nearby safe zones 24/7.</p>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-sm hover:shadow-lg transition duration-300 ease-in-out">
+               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">Verified Risk Levels</h4>
+              <p class="text-slate-600">Understand the general safety climate of areas with our easy-to-read, color-coded risk indicators based on reliable data sources.</p>
+            </div>
+          </div>
+           <div class="mt-12">
+               <a href="#features" class="nav-link text-indigo-600 hover:text-indigo-800 font-semibold transition duration-300">
+                  Learn More About Features →
+               </a>
+           </div>
+        </div>
+      </section>
+
+      <section id="landing-how-it-works" class="py-20 bg-slate-100 px-6">
+         <div class="container mx-auto text-center">
+          <h3 class="text-3xl font-bold text-slate-800 mb-4">Get Started in 3 Simple Steps</h3>
+          <p class="text-lg text-slate-600 mb-12 max-w-xl mx-auto">Start receiving personalized safety information effortlessly.</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-16">
+            <div class="flex flex-col items-center">
+              <div class="bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-md">1</div>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">Sign Up & Set Preferences</h4>
+              <p class="text-slate-600 text-center">Create your account and tell us about your upcoming trips or enable location tracking.</p>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-md">2</div>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">Receive Tailored Alerts</h4>
+              <p class="text-slate-600 text-center">Get notified via SMS, email, or in-app message about relevant safety updates.</p>
+            </div>
+            <div class="flex flex-col items-center">
+              <div class="bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-md">3</div>
+              <h4 class="text-xl font-semibold text-slate-800 mb-2">Travel with Peace of Mind</h4>
+              <p class="text-slate-600 text-center">Stay aware of your surroundings and make informed decisions during your travels.</p>
+            </div>
+          </div>
+           <div class="mt-12">
+               <a href="#how-it-works" class="nav-link text-indigo-600 hover:text-indigo-800 font-semibold transition duration-300">
+                  See Detailed Steps →
+               </a>
+           </div>
+        </div>
+      </section>
+
+      <section id="landing-testimonials" class="py-20 bg-white px-6">
+         <div class="container mx-auto text-center">
+          <h3 class="text-3xl font-bold text-slate-800 mb-4">What Our Users Say</h3>
+          <p class="text-lg text-slate-600 mb-12 max-w-xl mx-auto">Don't just take our word for it. Hear from fellow travelers.</p>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
+            <div class="bg-slate-50 p-6 rounded-lg shadow-sm border-l-4 border-indigo-500">
+              <p class="text-slate-600 italic mb-4">"The real-time alert for a transportation strike in Rome saved my travel day! Highly recommended."</p>
+              <p class="font-semibold text-slate-800">- Alex Johnson</p>
+              <p class="text-sm text-slate-500">Frequent Flyer</p>
+            </div>
+            <div class="bg-slate-50 p-6 rounded-lg shadow-sm border-l-4 border-indigo-500">
+              <p class="text-slate-600 italic mb-4">"I used the chatbot to ask about safe neighborhoods in Bogotá, and the instant, helpful response gave me confidence."</p>
+              <p class="font-semibold text-slate-800">- Sarah Chen</p>
+               <p class="text-sm text-slate-500">Solo Traveler</p>
+            </div>
+             <div class="bg-slate-50 p-6 rounded-lg shadow-sm border-l-4 border-indigo-500 md:col-span-2 lg:col-span-1">
+              <p class="text-slate-600 italic mb-4">"Knowing the risk level before visiting a new city helps me plan my activities better. It's a must-have tool."</p>
+              <p class="font-semibold text-slate-800">- Michael Brown</p>
+               <p class="text-sm text-slate-500">Backpacker</p>
+            </div>
+          </div>
+           <div class="mt-12">
+               <a href="#testimonials" class="nav-link text-indigo-600 hover:text-indigo-800 font-semibold transition duration-300">
+                  Read More Testimonials →
+               </a>
+           </div>
+        </div>
+      </section>
+
+      <section id="landing-cta" class="py-20 bg-indigo-600 text-white px-6">
+        <div class="container mx-auto text-center">
+          <h3 class="text-3xl font-bold mb-4">Ready to Travel Safer?</h3>
+          <p class="text-lg text-indigo-100 mb-8 max-w-xl mx-auto">
+            Sign up today and get your first destination safety report for free!
+          </p>
+          <a href="#subscribe" class="nav-link inline-block px-8 py-3 bg-white text-indigo-600 font-semibold rounded-lg shadow-md hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-indigo-600 transition duration-300">
+            Sign Up for Free Alerts
+          </a>
+        </div>
+      </section>
+    </section>
+
+    <section id="features" class="py-16 px-6 bg-white">
+       <div class="container mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-slate-800 mb-8 text-center">Our Core Features</h2>
+        <p class="text-lg text-slate-600 mb-12 max-w-2xl mx-auto text-center">
+          Leveraging technology to keep you safe and informed wherever your travels take you.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 0 0 5.454-1.31A8.967 8.967 0 0 1 18 9.75V9A6 6 0 0 0 6 9v.75a8.967 8.967 0 0 1-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 0 1-5.714 0m5.714 0a3 3 0 1 1-5.714 0" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">Real-Time Location Alerts</h4>
+              <p class="text-slate-600 mb-4">Receive timely notifications about safety incidents (e.g., protests, crime spikes), health advisories (e.g., outbreaks), or natural events (e.g., earthquakes, storms) happening near your current location or at your planned destination. Alerts are verified and delivered via your preferred channel (SMS, email, app).</p>
+              <ul class="list-disc list-inside text-slate-600 text-sm space-y-1">
+                  <li>Customizable alert radius</li>
+                  <li>Filter alerts by severity or type</li>
+                  <li>Integration with travel itinerary</li>
+              </ul>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">AI Chatbot Assistant</h4>
+              <p class="text-slate-600 mb-4">Have a question? Our intelligent chatbot is available 24/7. Ask about local customs, specific safety tips for an area, emergency contact numbers, currency exchange information, or directions to the nearest embassy or safe zone. Powered by advanced AI trained on travel safety data.</p>
+              <ul class="list-disc list-inside text-slate-600 text-sm space-y-1">
+                  <li>Natural language understanding</li>
+                  <li>Instant responses</li>
+                  <li>Multi-language support (coming soon)</li>
+              </ul>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">Verified Risk Levels</h4>
+              <p class="text-slate-600 mb-4">Get a clear picture of the general safety climate for countries, cities, and even specific neighborhoods. Our easy-to-understand, color-coded risk indicators (Low, Medium, High) are compiled from government advisories, news sources, and on-the-ground reports, constantly updated for accuracy.</p>
+              <ul class="list-disc list-inside text-slate-600 text-sm space-y-1">
+                  <li>Data from multiple trusted sources</li>
+                  <li>Historical trend analysis</li>
+                  <li>Specific risk factors highlighted (e.g., petty crime, political instability)</li>
+              </ul>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">Itinerary Monitoring</h4>
+              <p class="text-slate-600 mb-4">Optionally share your travel plans (flights, hotels). We'll proactively monitor your destinations and travel routes for potential disruptions or emerging safety concerns, providing tailored advice based on your specific schedule.</p>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">Emergency Assistance Hub</h4>
+              <p class="text-slate-600 mb-4">Access a centralized hub with one-tap access to local emergency numbers (police, ambulance, fire), embassy contacts, and pre-set emergency message templates to quickly inform your contacts of your situation and location.</p>
+            </div>
+            <div class="bg-slate-50 p-8 rounded-lg shadow-lg border border-slate-200">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="feature-icon"><path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672 13.684 16.6m0 0-2.51 2.225.569-9.47 5.227 7.917-3.286-.672ZM12 2.25V4.5m5.834.166-1.591 1.591M20.25 10.5H18M5.834 19.834l-1.591-1.591M3.75 10.5H6m11.25-4.5-1.591-1.591M12 19.5V17.25m-5.834-.166 1.591-1.591" /></svg>
+              <h4 class="text-xl font-semibold text-slate-800 mb-3">Interactive Safety Maps</h4>
+              <p class="text-slate-600 mb-4">Visualize safety information directly on a map, including risk zones, incident locations, and points of interest like police stations or hospitals (integrated into safety check results).</p>
+            </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="py-16 px-6 bg-slate-100">
+      <div class="container mx-auto text-center">
+        <h2 class="text-3xl md:text-4xl font-bold text-slate-800 mb-6">Getting Started is Easy</h2>
+        <p class="text-lg text-slate-600 mb-16 max-w-2xl mx-auto">
+          Follow these simple steps to begin receiving personalized travel safety information.
+        </p>
+        <div class="relative">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-12 md:gap-16 items-start">
+            <div class="flex flex-col items-center p-6 bg-white rounded-lg shadow-md relative">
+              <div class="absolute -top-8 bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border-4 border-slate-100">1</div>
+              <h4 class="text-xl font-semibold text-slate-800 mt-10 mb-3">Sign Up & Define Your Needs</h4>
+              <p class="text-slate-600 text-center text-sm leading-relaxed">
+                Quickly create your secure account. Specify upcoming destinations and dates, or enable real-time location tracking (with permission) for alerts based on where you are. Customize your alert preferences – choose delivery methods and severity levels.
+              </p>
+            </div>
+            <div class="flex flex-col items-center p-6 bg-white rounded-lg shadow-md relative mt-8 md:mt-0">
+              <div class="absolute -top-8 bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border-4 border-slate-100">2</div>
+              <h4 class="text-xl font-semibold text-slate-800 mt-10 mb-3">We Monitor & Analyze</h4>
+              <p class="text-slate-600 text-center text-sm leading-relaxed">
+                Our system continuously aggregates data from trusted global sources: government advisories, news, emergency services, weather, and health organizations. AI analysis verifies information and assesses potential impact on travelers in specific locations.
+              </p>
+            </div>
+            <div class="flex flex-col items-center p-6 bg-white rounded-lg shadow-md relative mt-8 md:mt-0">
+              <div class="absolute -top-8 bg-indigo-500 text-white rounded-full w-16 h-16 flex items-center justify-center text-2xl font-bold mb-4 shadow-lg border-4 border-slate-100">3</div>
+              <h4 class="text-xl font-semibold text-slate-800 mt-10 mb-3">Receive Alerts & Travel Safely</h4>
+              <p class="text-slate-600 text-center text-sm leading-relaxed">
+                When a relevant safety event matches your profile, we send a concise, actionable alert via your chosen channel. Use our chatbot for specific questions, check updated risk levels, and visualize data on maps to make informed decisions.
+              </p>
+            </div>
+          </div>
+        </div>
+         <div class="mt-20">
+             <a href="#subscribe" class="nav-link px-8 py-3 bg-indigo-600 text-white text-lg rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-100 transition duration-300">
+                 Sign Up Now
+             </a>
+         </div>
+      </div>
+    </section>
+
+    <section id="testimonials" class="py-16 px-6 bg-white">
+      <div class="container mx-auto">
+        <h2 class="text-3xl md:text-4xl font-bold text-slate-800 mb-8 text-center">Hear From Our Travelers</h2>
+        <p class="text-lg text-slate-600 mb-12 max-w-2xl mx-auto text-center">
+          Real stories from users who travel safer and smarter with our alerts and insights.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"The real-time alert for a transportation strike in Rome saved my travel day! I was able to re-route to the airport easily. Highly recommended."</p></div>
+              <div><p class="font-semibold text-slate-800">- Alex Johnson</p><p class="text-sm text-slate-500">Frequent Flyer, London UK</p></div>
+            </div>
+            <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"As a solo female traveler, safety is paramount. I used the chatbot to ask about safe neighborhoods in Bogotá, and the instant, helpful response gave me confidence exploring the city."</p></div>
+              <div><p class="font-semibold text-slate-800">- Sarah Chen</p><p class="text-sm text-slate-500">Solo Traveler, Sydney AU</p></div>
+            </div>
+             <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"Knowing the risk level before visiting a new city helps me plan my activities and accommodation better. The color-coded system is simple and effective. It's a must-have tool for backpacking."</p></div>
+              <div><p class="font-semibold text-slate-800">- Michael Brown</p><p class="text-sm text-slate-500">Backpacker, Toronto CA</p></div>
+            </div>
+             <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"We received an alert about a sudden health advisory for tap water at our resort in Mexico. We switched to bottled water immediately. So grateful for the timely warning!"</p></div>
+              <div><p class="font-semibold text-slate-800">- The Garcia Family</p><p class="text-sm text-slate-500">Family Vacationers, Miami USA</p></div>
+            </div>
+             <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"The itinerary monitoring feature is brilliant. It picked up on potential civil unrest near one of my planned stops in South America, allowing me to adjust my plans well in advance."</p></div>
+              <div><p class="font-semibold text-slate-800">- David Miller</p><p class="text-sm text-slate-500">Business Traveler, Berlin DE</p></div>
+            </div>
+             <div class="bg-slate-50 p-6 rounded-lg shadow-lg border-l-4 border-indigo-500 flex flex-col justify-between">
+              <div><p class="text-slate-600 italic mb-4 text-lg">"Simple, effective, and provides real peace of mind. The interface is clean and the alerts are genuinely useful, not just noise."</p></div>
+              <div><p class="font-semibold text-slate-800">- Chloe Dubois</p><p class="text-sm text-slate-500">Digital Nomad</p></div>
+            </div>
+        </div>
+         <div class="mt-16 text-center">
+             <a href="#subscribe" class="nav-link text-lg px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 focus:ring-offset-slate-50 transition duration-300">
+                 Ready to Join Them? Sign Up!
+             </a>
+         </div>
+      </div>
+    </section>
+
+    <section id="chatbot" class="py-16 px-6 bg-slate-100">
+        <div class="container mx-auto max-w-2xl">
+             <div class="bg-white p-8 md:p-12 rounded-xl shadow-xl">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 text-center">AI Chatbot Assistant</h2>
+                <p class="text-slate-600 mb-8 text-center">
+                    Ask anything about your destination! (Demo)
+                </p>
+                <div id="chatbot-output" class="mb-4">
+                    <div class="chat-message bot-message">Hello! How can I help you plan your trip today? Ask about safety tips, local customs, or emergency numbers.</div>
+                    </div>
+                <form id="chatbot-form" class="flex space-x-2">
+                    <input type="text" id="chatbot-input" placeholder="Type your question..." required class="flex-grow px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-300 flex-shrink-0">Send</button>
+                </form>
+             </div>
+        </div>
+    </section>
+
+    <section id="subscribe" class="py-16 px-6 bg-slate-100">
+      <div class="container mx-auto max-w-2xl">
+          <div class="bg-white p-8 md:p-12 rounded-xl shadow-2xl">
+            <h2 class="text-3xl font-bold text-slate-800 mb-4 text-center">Stay Ahead with Safety Alerts</h2>
+            <p class="text-slate-600 mb-8 text-center">
+              Sign up to receive real-time travel safety notifications, destination reports, and AI chatbot access.
+            </p>
+            <form id="subscribe-form" action="#" method="POST">
+              <div class="space-y-6">
+                <div>
+                  <label for="sub-name" class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                  <input type="text" name="name" id="sub-name" autocomplete="name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                </div>
+                <div>
+                  <label for="sub-email" class="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                  <input type="email" name="email" id="sub-email" autocomplete="email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                </div>
+                <div>
+                  <label for="sub-phone" class="block text-sm font-medium text-slate-700 mb-1">Phone Number <span class="text-slate-500">(Optional, for SMS alerts)</span></label>
+                  <input type="tel" name="phone" id="sub-phone" autocomplete="tel" class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out" placeholder="+1 (555) 123-4567">
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-2">Preferred Alert Method</label>
+                  <div class="flex flex-col sm:flex-row sm:space-x-6 space-y-2 sm:space-y-0">
+                      <div class="flex items-center">
+                          <input id="pref-email" name="alert_preference" type="radio" value="email" checked class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300">
+                          <label for="pref-email" class="ml-2 block text-sm text-slate-900">Email</label>
+                      </div>
+                      <div class="flex items-center">
+                          <input id="pref-sms" name="alert_preference" type="radio" value="sms" class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300">
+                          <label for="pref-sms" class="ml-2 block text-sm text-slate-900">SMS (if phone provided)</label>
+                      </div>
+                       <div class="flex items-center">
+                          <input id="pref-app" name="alert_preference" type="radio" value="app" disabled class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 disabled:opacity-50">
+                          <label for="pref-app" class="ml-2 block text-sm text-slate-500">In-App (Coming Soon)</label>
+                      </div>
+                  </div>
+                </div>
+                <div class="flex items-start">
+                  <div class="flex items-center h-5">
+                    <input id="sub-terms" name="terms" type="checkbox" required class="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-slate-300 rounded">
+                  </div>
+                  <div class="ml-3 text-sm">
+                    <label for="sub-terms" class="font-medium text-slate-700">I agree to the</label>
+                    <a href="#terms" target="_blank" class="nav-link text-indigo-600 hover:underline"> Terms of Service</a> and
+                    <a href="#privacy" target="_blank" class="nav-link text-indigo-600 hover:underline"> Privacy Policy</a>.
+                  </div>
+                </div>
+                <div>
+                  <button type="submit" id="subscribe-submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:opacity-75">
+                    Sign Up & Stay Safe
+                  </button>
+                </div>
+                 <div id="subscribe-message" class="mt-4 text-center text-sm h-5"></div>
+              </div>
+            </form>
+            <p class="mt-6 text-center text-xs text-slate-500">
+                We respect your privacy. You can unsubscribe at any time.
+            </p>
+          </div>
+      </div>
+    </section>
+
+    <section id="check-safety" class="py-16 px-6 bg-slate-100">
+       <div class="container mx-auto max-w-4xl">
+          <div class="bg-white p-8 md:p-12 rounded-lg shadow-lg">
+            <h2 class="text-2xl md:text-3xl font-bold text-slate-800 mb-4 text-center">
+              Safety Information for <span id="destination-name" class="text-indigo-600">Your Destination</span>
+            </h2>
+            <p class="text-slate-600 mb-8 text-center" id="loading-text">
+              Fetching the latest safety report...
+            </p>
+             <div id="loader" class="loader"></div>
+             <div id="safety-report" class="hidden space-y-6">
+                  <div id="risk-level-box" class="border rounded-lg p-6 border-l-4">
+                      <h3 id="risk-level-heading" class="text-xl font-semibold mb-2">Overall Risk Level: Medium</h3>
+                      <p id="risk-level-description" class="text-sm"></p>
+                  </div>
+                  <div>
+                      <h3 class="text-lg font-semibold text-slate-700 mb-3">Current Advisories:</h3>
+                      <ul id="advisories-list" class="list-disc list-inside space-y-2 text-slate-600 text-sm"></ul>
+                  </div>
+                   <div>
+                      <h3 class="text-lg font-semibold text-slate-700 mb-3">Key Safety Tips:</h3>
+                      <ul id="tips-list" class="list-disc list-inside space-y-2 text-slate-600 text-sm"></ul>
+                  </div>
+                   <div>
+                      <h3 class="text-lg font-semibold text-slate-700 mb-3">Local Emergency Numbers:</h3>
+                      <p id="emergency-numbers" class="text-slate-600 text-sm"></p>
+                      <p class="text-xs text-slate-500 mt-1">Verify these numbers upon arrival.</p>
+                  </div>
+                   <div id="map-container">
+                       <h3 class="text-lg font-semibold text-slate-700 mb-3">Location Overview:</h3>
+                       <div id="map"></div>
+                       <p class="text-xs text-slate-500 mt-1 text-right">Map data © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" class="text-indigo-600 hover:underline">OpenStreetMap</a> contributors</p>
+                   </div>
+                   <p class="text-xs text-slate-500 mt-6 border-t border-slate-200 pt-4">
+                      Disclaimer: This is a simulated report based on placeholder data. For real-time, accurate information, please <a href="#subscribe" class="nav-link text-indigo-600 hover:underline">subscribe</a> to our full service. Information is subject to change.
+                   </p>
+             </div>
+             <div id="error-message" class="hidden text-center text-red-600 bg-red-50 p-4 rounded border border-red-200 text-sm"></div>
+             <div class="mt-8 text-center">
+                 <a href="#home" class="nav-link text-indigo-600 hover:underline text-sm">← Check another destination</a>
+                 <span class="mx-2 text-slate-400">|</span>
+                 <a href="#subscribe" class="nav-link text-indigo-600 hover:underline text-sm">Subscribe for full reports & real-time alerts →</a>
+             </div>
+          </div>
+      </div>
+    </section>
+
+    <section id="privacy" class="py-16 px-6 bg-white">
+        <div class="container mx-auto max-w-3xl bg-slate-50 p-8 rounded-lg shadow">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6">Privacy Policy</h2>
+            <div class="space-y-4 text-slate-600 prose lg:prose-lg max-w-none">
+                <p><strong>Last Updated: 2024-03-15</strong></p>
+                <p>Your privacy is important to us. This Privacy Policy explains how Travel Safety Alert Bot ("we," "us," or "our") collects, uses, discloses, and safeguards your information when you use our website and services (the "Service").</p>
+                <h3>Information We Collect</h3>
+                <p>We may collect personal information such as your name, email address, phone number, travel destinations, itinerary details, and location data if you choose to provide it or enable location services.</p>
+                <h3>How We Use Your Information</h3>
+                <p>We use the information we collect to provide, operate, and maintain our Service, including: sending safety alerts, providing chatbot assistance, generating risk reports, personalizing your experience, and communicating with you.</p>
+                <h3>Information Sharing</h3>
+                <p>We do not sell your personal information. We may share information with third-party service providers who assist us in operating the Service (e.g., hosting, data analysis, notification delivery) under strict confidentiality agreements. We may also disclose information if required by law.</p>
+                 <h3>Data Security</h3>
+                <p>We implement reasonable security measures to protect your information, but no electronic transmission or storage is 100% secure.</p>
+                <h3>Your Choices</h3>
+                <p>You can manage your information and communication preferences through your account settings. You may disable location services, though this may limit certain features.</p>
+                <h3>Changes to This Policy</h3>
+                 <p>We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new policy on this page.</p>
+                 <h3>Contact Us</h3>
+                 <p>If you have any questions about this Privacy Policy, please <a href="#contact" class="nav-link text-indigo-600 hover:underline">contact us</a>.</p>
+            </div>
+        </div>
+    </section>
+
+     <section id="terms" class="py-16 px-6 bg-white">
+        <div class="container mx-auto max-w-3xl bg-slate-50 p-8 rounded-lg shadow">
+            <h2 class="text-3xl font-bold text-slate-800 mb-6">Terms of Service</h2>
+             <div class="space-y-4 text-slate-600 prose lg:prose-lg max-w-none">
+                <p><strong>Last Updated: 2024-03-15</strong></p>
+                <p>Please read these Terms of Service ("Terms") carefully before using the Travel Safety Alert Bot website and services (the "Service") operated by us.</p>
+                <p>Your access to and use of the Service is conditioned upon your acceptance of and compliance with these Terms. These Terms apply to all visitors, users, and others who wish to access or use the Service.</p>
+                <h3>Use of Service</h3>
+                <p>You agree to use the Service only for lawful purposes and in accordance with these Terms. The information provided by the Service is for informational purposes only and does not constitute professional advice. While we strive for accuracy, we cannot guarantee that all information is complete, accurate, or up-to-date. You travel at your own risk and are responsible for your own safety.</p>
+                <h3>Accounts</h3>
+                <p>When you create an account with us, you guarantee that the information you provide is accurate, complete, and current. You are responsible for maintaining the confidentiality of your account and password.</p>
+                 <h3>Disclaimer</h3>
+                <p>The Service is provided on an "AS IS" and "AS AVAILABLE" basis. We disclaim all warranties of any kind, whether express or implied. We do not warrant that the service will be uninterrupted, secure, or error-free.</p>
+                <h3>Limitation of Liability</h3>
+                <p>In no event shall Travel Safety Alert Bot, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service, or any reliance on information obtained from the Service.</p>
+                <h3>Governing Law</h3>
+                <p>These Terms shall be governed by and construed in accordance with the laws of Delaware, USA, without regard to its conflict of law provisions.</p>
+                 <h3>Changes</h3>
+                 <p>We reserve the right, at our sole discretion, to modify or replace these Terms at any time.</p>
+                 <h3>Contact Us</h3>
+                 <p>If you have any questions about these Terms, please <a href="#contact" class="nav-link text-indigo-600 hover:underline">contact us</a>.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="py-16 px-6 bg-slate-100">
+        <div class="container mx-auto max-w-2xl">
+             <div class="bg-white p-8 md:p-12 rounded-xl shadow-xl">
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 text-center">Get In Touch</h2>
+                <p class="text-slate-600 mb-8 text-center">
+                    Have questions, feedback, or need support? Reach out to us!
+                </p>
+                 <div class="mb-10 text-center space-y-2 text-slate-600 text-sm">
+                    <p><strong>Email:</strong> <a href="mailto:support@travelsafetybot.example.com" class="text-indigo-600 hover:underline">support@travelsafetybot.example.com</a></p>
+                    <p><strong>Address:</strong> 123 Safety Lane, Travel City, World 98765 (Placeholder)</p>
+                 </div>
+                <form id="contact-form" action="#" method="POST">
+                    <div class="space-y-6">
+                    <div>
+                        <label for="contact-name" class="block text-sm font-medium text-slate-700 mb-1">Your Name</label>
+                        <input type="text" name="contact-name" id="contact-name" autocomplete="name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                    </div>
+                    <div>
+                        <label for="contact-email" class="block text-sm font-medium text-slate-700 mb-1">Your Email</label>
+                        <input type="email" name="contact-email" id="contact-email" autocomplete="email" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                    </div>
+                    <div>
+                        <label for="contact-subject" class="block text-sm font-medium text-slate-700 mb-1">Subject</label>
+                        <input type="text" name="subject" id="contact-subject" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out">
+                    </div>
+                    <div>
+                        <label for="contact-message" class="block text-sm font-medium text-slate-700 mb-1">Message</label>
+                        <textarea id="contact-message" name="message" rows="4" required class="w-full px-4 py-2 border border-slate-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out"></textarea>
+                    </div>
+                    <div>
+                        <button type="submit" id="contact-submit-btn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-lg font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out disabled:opacity-75">
+                        Send Message
+                        </button>
+                    </div>
+                    <div id="contact-message-response" class="mt-4 text-center text-sm h-5"></div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </section>
+
+  </main>
+
+  <footer class="bg-slate-800 text-slate-400 py-12 px-6">
+    <div class="container mx-auto text-center md:flex md:justify-between md:items-center">
+      <div class="text-sm mb-4 md:mb-0">
+        © 2024 Travel Safety Bot | All Rights Reserved
+      </div>
+      <div class="flex justify-center space-x-6 text-sm">
+        <a href="#privacy" class="nav-link hover:text-white transition duration-300">Privacy Policy</a>
+        <a href="#terms" class="nav-link hover:text-white transition duration-300">Terms of Service</a>
+        <a href="#contact" class="nav-link hover:text-white transition duration-300">Contact Us</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const pageContent = document.getElementById('page-content');
+      const allPages = pageContent.querySelectorAll(':scope > section');
+      const headerNavLinks = document.querySelectorAll('header .nav-link');
+      let map = null;
+      let currentMarker = null;
+      const defaultCoords = [40.7128, -74.0060]; // New York City as default
+      const defaultZoom = 11;
+      const simulatedCoords = {
+          "paris": [48.8566, 2.3522],
+          "tokyo": [35.6895, 139.6917],
+          "london": [51.5074, -0.1278],
+          "current location": [34.0522, -118.2437] // LA as placeholder for current location
+      };
+
+      function showPage(pageId) {
+        pageId = pageId || 'home';
+        let pageFound = false;
+        allPages.forEach(page => {
+          if (page.id === pageId) {
+            page.classList.add('active');
+            pageFound = true;
+          } else {
+            page.classList.remove('active');
+          }
+        });
+
+        if (!pageFound) {
+            document.getElementById('home')?.classList.add('active');
+            pageId = 'home';
+        }
+
+        headerNavLinks.forEach(link => {
+           const linkHref = link.getAttribute('href');
+           if (linkHref === `#${pageId}`) {
+             link.classList.add('active-nav');
+           } else {
+             link.classList.remove('active-nav');
+           }
+         });
+
+         if (pageId === 'check-safety' && map) {
+            setTimeout(() => map.invalidateSize(), 100); // Ensure map renders correctly after section shown
+         }
+
+        window.scrollTo(0, 0);
+      }
+
+      document.body.addEventListener('click', (event) => {
+        const target = event.target.closest('a');
+        if (target && target.classList.contains('nav-link')) {
+          const href = target.getAttribute('href');
+          if (href && href.startsWith('#') && href.length > 1) {
+            event.preventDefault();
+            const pageId = href.substring(1);
+            showPage(pageId);
+             if (window.location.hash !== href) {
+                 window.location.hash = href;
+             }
+          } else if (href === '#') {
+            event.preventDefault();
+          }
+        }
+      });
+
+      window.addEventListener('popstate', () => {
+          const hash = window.location.hash;
+          const pageId = hash ? hash.substring(1) : 'home';
+          showPage(pageId);
+      });
+
+      const initialHash = window.location.hash;
+      const initialPageId = initialHash ? initialHash.substring(1) : 'home';
+      showPage(initialPageId);
+
+      const checkSafetyForm = document.getElementById('check-safety-form');
+      const heroDestinationInput = document.getElementById('hero-destination-input');
+
+      checkSafetyForm.addEventListener('submit', (event) => {
+          event.preventDefault();
+          const destination = heroDestinationInput.value.trim();
+          document.getElementById('location-error').textContent = ''; // Clear previous errors
+          if (destination) {
+              showPage('check-safety');
+              window.location.hash = '#check-safety';
+              performSafetyCheck(destination);
+          }
+      });
+
+      const currentLocationBtn = document.getElementById('current-location-btn');
+      const locationErrorMsg = document.getElementById('location-error');
+
+      currentLocationBtn.addEventListener('click', () => {
+        locationErrorMsg.textContent = ''; // Clear previous errors
+        if (navigator.geolocation) {
+            locationErrorMsg.textContent = 'Getting location...';
+            navigator.geolocation.getCurrentPosition((position) => {
+                locationErrorMsg.textContent = '';
+                heroDestinationInput.value = "Current Location"; // Use a standard string
+                 const currentCoords = [position.coords.latitude, position.coords.longitude];
+                 simulatedCoords["current location"] = currentCoords; // Update coords for simulation
+                checkSafetyForm.requestSubmit(); // Programmatically submit form
+            }, (error) => {
+                console.error("Geolocation error:", error);
+                let message = "Could not get location. ";
+                switch(error.code) {
+                    case error.PERMISSION_DENIED: message += "Permission denied."; break;
+                    case error.POSITION_UNAVAILABLE: message += "Position unavailable."; break;
+                    case error.TIMEOUT: message += "Request timed out."; break;
+                    default: message += "Unknown error."; break;
+                }
+                locationErrorMsg.textContent = message;
+            }, { timeout: 10000 }); // 10 second timeout
+        } else {
+            locationErrorMsg.textContent = "Geolocation is not supported by this browser.";
+        }
+      });
+
+      function setupMapIfNeeded() {
+        if (!map && document.getElementById('map')) {
+            map = L.map('map').setView(defaultCoords, defaultZoom);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors'
+            }).addTo(map);
+        }
+      }
+
+       function updateMap(coords, destinationName) {
+            setupMapIfNeeded();
+            if(map){
+                map.setView(coords, defaultZoom);
+                if (currentMarker) {
+                    map.removeLayer(currentMarker);
+                }
+                currentMarker = L.marker(coords).addTo(map)
+                    .bindPopup(`Safety Check for: ${destinationName}`)
+                    .openPopup();
+                 setTimeout(() => map.invalidateSize(), 100); // Recalculate size after update
+            }
+       }
+
+      function performSafetyCheck(destination) {
+          const destinationSpan = document.getElementById('destination-name');
+          const loader = document.getElementById('loader');
+          const loadingText = document.getElementById('loading-text');
+          const reportDiv = document.getElementById('safety-report');
+          const errorDiv = document.getElementById('error-message');
+          const riskBox = document.getElementById('risk-level-box');
+          const riskHeading = document.getElementById('risk-level-heading');
+          const riskDescription = document.getElementById('risk-level-description');
+          const advisoriesList = document.getElementById('advisories-list');
+          const tipsList = document.getElementById('tips-list');
+          const emergencyNumbersEl = document.getElementById('emergency-numbers');
+          const mapContainer = document.getElementById('map-container');
+
+          loader.classList.remove('hidden');
+          loadingText.classList.remove('hidden');
+          reportDiv.classList.add('hidden');
+          errorDiv.classList.add('hidden');
+          mapContainer.classList.add('hidden'); // Hide map initially
+
+          const safeDestination = destination.replace(/</g, "<").replace(/>/g, ">");
+          destinationSpan.textContent = safeDestination;
+          loadingText.textContent = `Fetching the latest safety report for ${safeDestination}...`;
+
+          setTimeout(() => {
+             loader.classList.add('hidden');
+             loadingText.classList.add('hidden');
+
+             let reportData;
+             const destinationLower = destination.toLowerCase();
+
+             if (destinationLower.includes("paris")) {
+                 reportData = {
+                     risk: "Medium", riskColor: "amber", headingColor: "text-amber-800", bgColor: "bg-amber-50", borderColor: "border-amber-400",
+                     description: "Exercise increased caution due to pickpocketing in tourist areas and occasional transport strikes.",
+                     advisories: [
+                         { type: "Security", color: "text-orange-600", text: "High vigilance recommended around major landmarks (Eiffel Tower, Louvre)." },
+                         { type: "Info", color: "text-blue-600", text: "Check metro status frequently due to potential disruptions." }
+                     ],
+                     tips: ["Use a money belt.", "Be aware of distractions in crowded places.", "Validate your transport tickets."],
+                     emergency: "Police: 17 | Ambulance (SAMU): 15 | Fire: 18 | European Emergency: 112",
+                     coords: simulatedCoords["paris"]
+                 };
+             } else if (destinationLower.includes("tokyo")) {
+                 reportData = {
+                     risk: "Low", riskColor: "green", headingColor: "text-green-800", bgColor: "bg-green-50", borderColor: "border-green-400",
+                     description: "Generally very safe. Be mindful of earthquake preparedness.",
+                     advisories: [
+                         { type: "Natural Event", color: "text-blue-600", text: "Familiarize yourself with earthquake procedures." },
+                         { type: "Info", color: "text-blue-600", text: "Major transport hubs can be extremely crowded during peak hours." }
+                     ],
+                     tips: ["Carry your hotel's address in Japanese.", "Observe local etiquette (queuing, quiet on trains).", "Download an offline map."],
+                     emergency: "Police: 110 | Fire/Ambulance: 119",
+                     coords: simulatedCoords["tokyo"]
+                 };
+             } else if (destinationLower.includes("current location")){
+                 reportData = { // Placeholder data for Current Location
+                    risk: "Medium", riskColor: "amber", headingColor: "text-amber-800", bgColor: "bg-amber-50", borderColor: "border-amber-400",
+                    description: "General safety information for your detected area. Verify local specifics.",
+                    advisories: [ { type: "Info", color: "text-blue-600", text: "Weather conditions are currently stable." }],
+                    tips: ["Stay aware of your surroundings.", "Secure personal belongings."],
+                    emergency: "Emergency: 911 (Example - US)",
+                    coords: simulatedCoords["current location"]
+                 };
+             }
+             else { // Default / Other
+                 reportData = {
+                     risk: "High", riskColor: "red", headingColor: "text-red-800", bgColor: "bg-red-50", borderColor: "border-red-400",
+                     description: "Exercise a high degree of caution. Limited information available, consult official government advisories.",
+                     advisories: [
+                         { type: "Warning", color: "text-red-600", text: "Official travel advisories may be in effect. Check embassy resources." },
+                         { type: "Security", color: "text-orange-600", text: "Avoid non-essential travel to certain areas if advised." }
+                     ],
+                     tips: ["Register with your embassy.", "Have emergency contacts readily available.", "Monitor local news closely."],
+                     emergency: "Verify local emergency numbers immediately upon arrival.",
+                     coords: simulatedCoords["london"] ?? defaultCoords // Use London as default if known, else NY
+                 };
+             }
+
+             riskHeading.textContent = `Overall Risk Level: ${reportData.risk}`;
+             riskDescription.textContent = reportData.description;
+             riskBox.className = `border rounded-lg p-6 border-l-4 ${reportData.bgColor} ${reportData.borderColor}`; // Apply dynamic colors
+             riskHeading.className = `text-xl font-semibold mb-2 ${reportData.headingColor}`;
+             riskDescription.className = `text-sm ${reportData.headingColor.replace('800','700')}`; // Slightly lighter text color
+
+             advisoriesList.innerHTML = reportData.advisories.map(adv =>
+                `<li><span class="font-medium ${adv.color}">[${adv.type}]</span> ${adv.text}</li>`
+             ).join('');
+
+             tipsList.innerHTML = reportData.tips.map(tip => `<li>${tip}</li>`).join('');
+             emergencyNumbersEl.textContent = reportData.emergency;
+
+             reportDiv.classList.remove('hidden');
+             mapContainer.classList.remove('hidden'); // Show map container
+             updateMap(reportData.coords, safeDestination);
+
+
+          }, 1500);
+      }
+
+      function handleFormSubmit(form, messageElement, submitButton) {
+           event.preventDefault();
+           submitButton.disabled = true;
+           submitButton.textContent = 'Submitting...';
+           messageElement.textContent = '';
+
+           setTimeout(() => {
+                messageElement.textContent = "Thank you! Your submission was received.";
+                messageElement.className = "mt-4 text-center text-sm text-green-600 h-5";
+                form.reset();
+                submitButton.disabled = false;
+                submitButton.textContent = form.id === 'subscribe-form' ? 'Sign Up & Stay Safe' : 'Send Message';
+
+                setTimeout(() => { messageElement.textContent = ''; }, 5000);
+           }, 1000);
+      }
+
+      const subscribeForm = document.getElementById('subscribe-form');
+      const subscribeMessage = document.getElementById('subscribe-message');
+      const subscribeBtn = document.getElementById('subscribe-submit-btn');
+      subscribeForm.addEventListener('submit', (event) => handleFormSubmit(subscribeForm, subscribeMessage, subscribeBtn));
+
+      const contactForm = document.getElementById('contact-form');
+      const contactMessageResponse = document.getElementById('contact-message-response');
+      const contactBtn = document.getElementById('contact-submit-btn');
+      contactForm.addEventListener('submit', (event) => handleFormSubmit(contactForm, contactMessageResponse, contactBtn));
+
+      const chatbotForm = document.getElementById('chatbot-form');
+      const chatbotInput = document.getElementById('chatbot-input');
+      const chatbotOutput = document.getElementById('chatbot-output');
+
+      chatbotForm.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const userText = chatbotInput.value.trim();
+            if (!userText) return;
+
+            appendChatMessage(userText, 'user');
+            chatbotInput.value = '';
+
+            setTimeout(async() => {
+                const botResponse = await getBotResponse(userText);
+                appendChatMessage(botResponse, 'bot');
+            }, 800);
+      });
+
+       function appendChatMessage(text, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = text;
+            messageDiv.classList.add('chat-message');
+            if (sender === 'user') {
+                messageDiv.classList.add('user-message', 'ml-auto');
+            } else {
+                messageDiv.classList.add('bot-message', 'mr-auto');
+            }
+            chatbotOutput.appendChild(messageDiv);
+            chatbotOutput.scrollTop = chatbotOutput.scrollHeight; // Scroll to bottom
+       }
+
+       async function getBotResponse(inputText) {
+        const prompt = `If the input text is a place or destination tell about safety tips, local customs, or emergency numbers.
+        If the input text is anything else ask the person to tell about the place they want to visit.
+        Input Text:  
+          ${inputText}
+        `
+        const GEMINI_API_KEY = "";
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+      
+        const requestBody = {
+          contents: [
+            {
+              parts: [
+                { text: prompt }
+              ]
+            }
+          ]
+        };
+      
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+      
+          const data = await response.json();
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "No response from AI.";
+          
+          return responseText;
+      
+        } catch (error) {
+          console.error('Error:', error);
+          return "Error communicating with AI.";
+        }
+      }
+      
+    });
+  </script>
+
+</body>
+</html>
