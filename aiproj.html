@@ -43,7 +43,7 @@
   <header class="bg-white shadow-sm sticky top-0 z-50">
     <nav class="container mx-auto px-6 py-4 flex flex-wrap justify-between items-center">
       <a href="#home" class="nav-link text-2xl font-bold text-indigo-600 hover:text-indigo-700 transition duration-300">
-        Travel Safety Bot
+        SafeHopp
       </a>
       <div class="flex items-center space-x-4 mt-4 md:mt-0">
         <ul class="flex space-x-6 text-slate-600">
@@ -96,7 +96,7 @@
 
       <section id="landing-features" class="py-20 bg-white px-6">
         <div class="container mx-auto text-center">
-          <h3 class="text-3xl font-bold text-slate-800 mb-4">Why Choose Our Safety Bot?</h3>
+          <h3 class="text-3xl font-bold text-slate-800 mb-4">Why Choose SafeHopp?</h3>
           <p class="text-lg text-slate-600 mb-12 max-w-xl mx-auto">Everything you need to travel smarter and safer, all in one place.</p>
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-left">
             <div class="bg-slate-50 p-8 rounded-lg shadow-sm hover:shadow-lg transition duration-300 ease-in-out">
@@ -332,9 +332,9 @@
     <section id="chatbot" class="py-16 px-6 bg-slate-100">
         <div class="container mx-auto max-w-2xl">
              <div class="bg-white p-8 md:p-12 rounded-xl shadow-xl">
-                <h2 class="text-3xl font-bold text-slate-800 mb-4 text-center">AI Chatbot Assistant</h2>
+                <h2 class="text-3xl font-bold text-slate-800 mb-4 text-center">AI Safety Assistant</h2>
                 <p class="text-slate-600 mb-8 text-center">
-                    Ask anything about your destination! (Demo)
+                    Ask anything about your destination!
                 </p>
                 <div id="chatbot-output" class="mb-4">
                     <div class="chat-message bot-message">Hello! How can I help you plan your trip today? Ask about safety tips, local customs, or emergency numbers.</div>
@@ -550,15 +550,26 @@
   </main>
 
   <footer class="bg-slate-800 text-slate-400 py-12 px-6">
-    <div class="container mx-auto text-center md:flex md:justify-between md:items-center">
-      <div class="text-sm mb-4 md:mb-0">
-        © 2024 Travel Safety Bot | All Rights Reserved
-      </div>
-      <div class="flex justify-center space-x-6 text-sm">
-        <a href="#privacy" class="nav-link hover:text-white transition duration-300">Privacy Policy</a>
-        <a href="#terms" class="nav-link hover:text-white transition duration-300">Terms of Service</a>
-        <a href="#contact" class="nav-link hover:text-white transition duration-300">Contact Us</a>
-      </div>
+    <div class="container mx-auto text-center"> <!-- Use text-center for centering on small screens -->
+
+        <!-- Existing copyright and policy links -->
+        <div class="md:flex md:justify-between md:items-center">
+            <div class="text-sm mb-4 md:mb-0">
+                © 2025 Travel Safety Bot | All Rights Reserved
+            </div>
+
+            <div class="text-sm mb-4 md:mb-0 md:mx-auto">
+              Developed by <a href="https://github.com/NyasaVishwas" target="_blank" rel="noopener noreferrer" class="text-white hover:text-slate-300 transition duration-300"><span class="font-bold">NYASA VISHWAS</span></a>
+            </div>
+
+        
+            <div class="flex justify-center space-x-6 text-sm">
+                <a href="#privacy" class="nav-link hover:text-white transition duration-300">Privacy Policy</a>
+                <a href="#terms" class="nav-link hover:text-white transition duration-300">Terms of Service</a>
+                <a href="#contact" class="nav-link hover:text-white transition duration-300">Contact Us</a>
+            </div>
+          </div>
+
     </div>
   </footer>
 
@@ -844,10 +855,20 @@
             appendChatMessage(userText, 'user');
             chatbotInput.value = '';
 
+            // Show a placeholder or loader for the bot response
+            const botTypingIndicator = appendChatMessage('...', 'bot'); // Append '...' as a placeholder
+
             setTimeout(async() => {
                 const botResponse = await getBotResponse(userText);
-                appendChatMessage(botResponse, 'bot');
-            }, 800);
+                // Replace the placeholder with the actual response
+                botTypingIndicator.textContent = botResponse;
+                 // Ensure correct class (bot-message) is applied if the placeholder didn't get it for some reason
+                botTypingIndicator.classList.add('bot-message', 'mr-auto');
+                 // Remove user message class if any
+                 botTypingIndicator.classList.remove('user-message', 'ml-auto');
+
+                chatbotOutput.scrollTop = chatbotOutput.scrollHeight; // Scroll to bottom again
+            }, 800); // Simulate a slight delay before fetching response
       });
 
        function appendChatMessage(text, sender) {
@@ -857,21 +878,60 @@
             if (sender === 'user') {
                 messageDiv.classList.add('user-message', 'ml-auto');
             } else {
-                messageDiv.classList.add('bot-message', 'mr-auto');
+                // For bot message, don't add bot-message class immediately if it's a placeholder.
+                // We add it after the response is received to ensure it's styled correctly.
+                // But for the initial "Hello" message, it's fine to add it directly.
+                 if (text !== '...') { // Add bot-message class for initial and final messages, not placeholder
+                     messageDiv.classList.add('bot-message', 'mr-auto');
+                 }
             }
             chatbotOutput.appendChild(messageDiv);
             chatbotOutput.scrollTop = chatbotOutput.scrollHeight; // Scroll to bottom
+            return messageDiv; // Return the element so it can be updated (for placeholder)
        }
 
        async function getBotResponse(inputText) {
-        const prompt = `If the input text is a place or destination tell about safety tips, local customs, or emergency numbers.
-        If the input text is anything else ask the person to tell about the place they want to visit.
-        Input Text:  
-          ${inputText}
-        `
-        const GEMINI_API_KEY = "";
+        // ** MODIFIED PROMPT START - ADDING EXAMPLES **
+        const prompt = `You are a helpful Travel Safety Alert Bot named SafeHopp Assistant. Your goal is to provide specific safety information, local customs, or emergency numbers *only* for locations mentioned by the user.
+
+        If the user asks about a specific city, country, or region regarding safety, customs, or emergency contacts, provide a concise and relevant answer based on general knowledge about travel safety for that location.
+        If the user asks about *anything else* (topics unrelated to travel, general knowledge, definitions, personal questions, requests to write things, etc.), or if the user asks a safety question but does *not* name a specific location, you must respond with the following exact phrase: "I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about."
+
+        Keep your answers concise and directly address the safety-related aspect of the location mentioned, or provide the standard decline message.
+
+        Here are some examples of how you should respond:
+
+        User: Tell me about safety in Rome.
+        Bot: When in Rome, be mindful of pickpockets, especially around major tourist sites and public transport. Keep valuables secure and be aware of your surroundings.
+
+        User: What is the capital of France?
+        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
+
+        User: Safety tips for Thailand.
+        Bot: For Thailand, be cautious of petty crime like bag snatching. Be aware of local laws regarding cultural sites and respectful dress. Research specific areas as safety can vary.
+
+        User: How dangerous is it?
+        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
+
+        User: Can you help me plan my trip?
+        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
+
+        User: What about emergency numbers for Berlin?
+        Bot: The main emergency number for Police, Ambulance, and Fire in Germany (including Berlin) is 112.
+
+        User: ${inputText.replace(/"/g, '')}
+        Bot:`; // Added User: and Bot: to structure the final query like the examples
+        // ** MODIFIED PROMPT END **
+
+        // REMINDER: Replace "" with your actual Gemini API Key
+        const GEMINI_API_KEY = "AIzaSyCW4Sr29FMy-buf0U2x5cYZguspWr-Hhps"; // <-- PASTE YOUR GEMINI API KEY HERE
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-      
+
+        if (!GEMINI_API_KEY) {
+             console.error("GEMINI_API_KEY is not set.");
+             return "Error: API Key is not configured. Please contact the site administrator.";
+        }
+
         const requestBody = {
           contents: [
             {
@@ -881,7 +941,7 @@
             }
           ]
         };
-      
+
         try {
           const response = await fetch(url, {
             method: 'POST',
@@ -890,18 +950,35 @@
             },
             body: JSON.stringify(requestBody)
           });
-      
+
+          if (!response.ok) {
+              const errorBody = await response.text();
+              console.error('API Error response:', response.status, response.statusText, errorBody);
+               // Attempt to parse potential JSON error response
+              try {
+                  const errorJson = JSON.parse(errorBody);
+                  return `API Error: ${errorJson.error?.message || response.statusText}`;
+              } catch (e) {
+                   return `API Error: ${response.statusText}`;
+              }
+          }
+
           const data = await response.json();
-          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "No response from AI.";
-          
+
+           // Check if candidates and parts exist and have text
+          const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "Sorry, I couldn't retrieve information for that request at this time.";
+
           return responseText;
-      
+
         } catch (error) {
-          console.error('Error:', error);
-          return "Error communicating with AI.";
+          console.error('Fetch error:', error);
+          return "Sorry, I encountered an error while trying to respond. Please try again.";
         }
       }
-      
+
+      // Initial bot message
+      //appendChatMessage("Hello! How can I help you plan your trip today? Ask about safety tips, local customs, or emergency numbers for a specific place.", 'bot');
+
     });
   </script>
 
