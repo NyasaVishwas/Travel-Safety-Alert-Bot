@@ -1187,46 +1187,33 @@
        }
 
         // Keep getBotResponse function for the chatbot
-       async function getBotResponse(inputText) {
-        // ** Chatbot Prompt - Remains the same **
-        const prompt = `You are a helpful Travel Safety Alert Bot named SafeHopp Assistant. Your goal is to provide specific safety information, local customs, or emergency numbers *only* for locations mentioned by the user.
-        If the user says hi or any other form of greetings, greet them back politely and then respond with "Which destination would you like to know about?"
-        If the user asks about a specific city, country, or region regarding safety, customs, or emergency contacts, provide a concise and relevant answer based on general knowledge about travel safety for that location.
-        If the user asks about *anything else* (topics unrelated to travel, general knowledge, definitions, personal questions, requests to write things, etc.), or if the user asks a safety question but does *not* name a specific location, you must respond with the following exact phrase: "I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about."
-        If the user asks you to explain above response in detail, then provide a detailed response.
-        Keep your answers concise and indirectly address the safety-related aspect of the location mentioned, or provide the standard decline message.
+        async function getBotResponse(inputText) {
+        // ** MODIFIED CHATBOT PROMPT START - Increased Flexibility & Context Handling **
+        // NOTE: The model has limited memory of past turns in this stateless setup.
+        // We instruct it to assume "tell me more" relates to the *last mentioned location*,
+        // but its ability to remember across multiple turns is not guaranteed by the API alone.
 
-        Here are some examples of how you should respond:
+        const prompt = `You are SafeHopp Assistant, an AI-powered travel safety advisor for the SafeHopp website. Your role is to provide real-time travel safety information, including weather updates, safety tips, risky areas to avoid, safe areas to visit, and alerts about local scams.
 
-        User: Tell me about safety in Rome.
-        Bot: When in Rome, be mindful of pickpockets, especially around major tourist sites and public transport. Keep valuables secure and be aware of your surroundings.
-
-        User: What is the capital of France?
-        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
-
-        User: Safety tips for Thailand.
-        Bot: For Thailand, be cautious of petty crime like bag snatching. Be aware of local laws regarding cultural sites and respectful dress. Research specific areas as safety can vary.
-
-        User: How dangerous is it?
-        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
-
-        User: Can you help me plan my trip?
-        Bot: I can only provide information about travel safety for specific destinations. Please tell me which place you'd like to ask about.
-
-        User: What about emergency numbers for Berlin?
-        Bot: The main emergency number for Police, Ambulance, and Fire in Germany (including Berlin) is 112.
+        - Respond only to queries about travel safety or planning.
+        - For clearly unrelated queries (e.g., math problems, non-travel topics), reply: "Sorry, I can only help with travel safety information. Please ask about travel safety or planning. Stay safe!"
+        - If the user says "tell me more," "more details," "what else," "anything else," "more info," or similar, provide additional travel safety information about the previously mentioned location or topic.
+        - Use a friendly, calm, and professional tone.
+        - Keep initial responses concise (2-3 sentences max) with no bullet points or heavy formatting unless requested.
+        - Provide actionable advice and avoid vague or repetitive details.
+        - Expand with details only if the user explicitly asks (e.g., via follow-up phrases or specific questions).
+        - Avoid jargon and prioritize clarity and user safety.
+        - Greet users briefly and end with a positive message like "Safe travels!" or "Stay adventurous, stay safe!"
+        - Be empathetic and supportive.
+        - Use the conversation history to maintain context, linking follow-up queries to the prior location or topic unless the user specifies a new one.
 
         User: ${inputText.replace(/"/g, '')}
         Bot:`;
-        // ** Chatbot Prompt End **
+        // ** MODIFIED CHATBOT PROMPT END **
+
 
         const GEMINI_API_KEY = "AIzaSyCW4Sr29FMy-buf0U2x5cYZguspWr-Hhps"; // <-- PASTE YOUR GEMINI API KEY HERE
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
-
-        if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || GEMINI_API_KEY === "") {
-             console.error("GEMINI_API_KEY is not set for Chatbot.");
-             return "Error: Chatbot API Key is not configured.";
-        }
 
         const requestBody = {
           contents: [
