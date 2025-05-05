@@ -775,10 +775,6 @@
             const GEMINI_API_KEY = "AIzaSyCW4Sr29FMy-buf0U2x5cYZguspWr-Hhps"; // <-- PASTE YOUR GEMINI API KEY HERE
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-            if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_GEMINI_API_KEY_HERE" || GEMINI_API_KEY === "") {
-                console.error("GEMINI_API_KEY is not set.");
-                throw new Error("API Key is not configured. Please contact the site administrator.");
-            }
 
             // Prompt designed to get structured text for parsing
             const prompt = `As a helpful Travel Safety Alert Bot, provide a detailed travel safety report for "${destination}".
@@ -1213,7 +1209,7 @@
         // ** MODIFIED CHATBOT PROMPT END **
 
 
-        const GEMINI_API_KEY = "AIzaSyCW4Sr29FMy-buf0U2x5cYZguspWr-Hhps"; // <-- PASTE YOUR GEMINI API KEY HERE
+        const GEMINI_API_KEY = "AIzaSyCW4Sr29FMy-buf0U2x5cYZguspWr-Hhps";
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
         const requestBody = {
